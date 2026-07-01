@@ -16,7 +16,7 @@ pinned: false
   <img src="https://img.shields.io/badge/ChromaDB-1.5-green?logo=databricks&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" />
-  <img src="https://img.shields.io/badge/LLM-swappable-blueviolet?logo=openai&logoColor=white" />
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey" />
 </p>
 
 <p align="center">
@@ -26,23 +26,25 @@ pinned: false
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" width="780" alt="Demo: retrieval with citations, multi-turn memory, code agent with chart" />
+  <img src="docs/demo.gif" width="780" alt="Retrieval with citations, multi-turn memory, and a code agent that generates and runs charts" />
 </p>
 
-<p align="center">
-  <b>Ask questions. Get cited answers. Have Python written, executed, and self-corrected — all grounded in your documents.</b>
-</p>
+A multi-agent Retrieval-Augmented Generation system that answers questions over a
+document knowledge base with **citation-grounded** responses, and writes and
+executes **sandboxed Python** — with self-correcting retries — to compute or chart
+answers directly from retrieved data.
 
 ---
 
-## What it does
+## Features
 
-Upload any PDF knowledge base. The system routes each question to one of two agents:
-
-| Question type | Agent | What happens |
-|---|---|---|
-| *"What was the company strategy in 2024?"* | **Retrieval agent** | Semantic search → cited answer (source + page) |
-| *"Plot quarterly revenue as a bar chart"* | **Code agent** | Python generated → sandboxed execution → self-correcting retry if it fails → chart returned |
+- **Intent-based routing** — a router node classifies each question and dispatches it to the retrieval agent or the code-execution agent.
+- **Citation grounding** — every retrieval answer carries its source document and page number; nothing is asserted without a reference.
+- **Sandboxed code execution** — generated Python runs in an isolated process with a hard timeout and CPU cap; a Docker backend adds network and memory isolation for production.
+- **Self-correcting retries** — when generated code fails, the traceback is fed back to the model and the code is regenerated, up to a configurable retry limit.
+- **Provider-agnostic LLM** — switch between Gemini, Groq, Claude, or GPT by changing a single environment variable.
+- **Local embeddings** — `sentence-transformers` runs offline with no API cost.
+- **Multi-turn memory** — per-session conversation history resolves follow-up questions.
 
 ---
 
@@ -57,16 +59,13 @@ User (Chainlit UI)
        ▼
  LangGraph Orchestrator
        │
-   [Router node]  ← single LLM call to classify intent
+   [Router node]  ── single LLM call to classify intent
        │
   ┌────┴────────────────────────┐
   ▼                             ▼
 [Retrieval node]           (always runs — grounds both paths)
   │
-  ├─ intent = retrieval ──► [Answer node]
-  │                              │
-  │                         grounded answer
-  │                         + citations
+  ├─ intent = retrieval ──► [Answer node] ──► grounded answer + citations
   │
   └─ intent = code ────────► [Code-exec node]
                                   │
@@ -76,83 +75,93 @@ User (Chainlit UI)
                              timeout · CPU cap · isolated dir
                                   │
                              ┌────┴────┐
-                           ok?     error?
-                                  │
-                             feed traceback back to LLM
-                             retry ≤ N times  ◄── self-correction loop
-                                  │
+                           ok?     error? ── feed traceback back to LLM
+                                  │          and retry (≤ N times)
+                                  ▼
                              chart / computed result
 ```
 
-**Key design decisions worth defending in interviews:**
+**Design principles**
 
-- **Retrieval always runs before branching** — so the code agent always has grounded numbers, not hallucinated ones.
-- **Provider abstraction** — swap the entire LLM backend (Gemini / Groq / Claude / GPT) by changing one env var, zero code changes.
-- **Typed state throughout** — a `TypedDict GraphState` flows through every LangGraph node; impossible to silently drop a field.
-- **Two sandbox backends** — `subprocess` (portable, works on Hugging Face Spaces) or `docker` (hard network/memory/CPU isolation for production).
+- **Retrieval runs before branching**, so the code agent operates on grounded numbers rather than hallucinated ones.
+- **Typed state throughout** — a `TypedDict` graph state flows through every node, so no field is silently dropped.
+- **Single source of truth for the vector store** — ingestion (writes) and retrieval (reads) share one accessor and can never disagree on collection, embeddings, or path.
+- **Pluggable backends** — both the LLM provider and the sandbox executor are swappable behind a stable interface.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Why |
-|---|---|---|
-| Agent orchestration | **LangGraph** | Typed graph, conditional edges, easy to extend |
-| Vector store | **ChromaDB** | Persistent, local, no infra needed |
-| Embeddings | **sentence-transformers** (local) | Free, offline, no API cost |
-| LLM backend | **Gemini / Groq / Claude / GPT** (swappable) | One env-var switch |
-| API | **FastAPI** | Auto-generated docs, Pydantic-native |
-| UI | **Chainlit** | Multi-turn chat with file attachment, zero frontend code |
-| Validation | **Pydantic v2** | Typed schemas at every boundary |
-| Sandboxing | **subprocess + Docker** | Dual-backend untrusted code execution |
-| Deploy | **Hugging Face Spaces** (Docker SDK) | Free public URL |
+| Layer | Technology |
+|---|---|
+| Agent orchestration | LangGraph |
+| Vector store | ChromaDB |
+| Embeddings | sentence-transformers (local) |
+| LLM backend | Gemini / Groq / Claude / GPT (swappable) |
+| API | FastAPI |
+| UI | Chainlit |
+| Validation | Pydantic v2 |
+| Sandboxing | subprocess + Docker |
+| Deployment | Docker · Hugging Face Spaces |
 
 ---
 
-## Quickstart
+## Getting Started
 
 ```bash
-# 1. Clone and enter
+# 1. Clone
 git clone https://github.com/alirizzzv/RAG.git && cd RAG
 
-# 2. Set up environment
+# 2. Install
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Configure LLM provider (one key, one model string)
-cp .env.example .env
-#  → edit .env: set LLM_MODEL and paste the matching API key
+# 3. Configure the LLM provider
+cp .env.example .env          # set LLM_MODEL and the matching API key
 
-# 4. Add your PDFs (or use the generated samples)
-python scripts/generate_sample_docs.py   # creates 3 fictional annual reports in data/
+# 4. Generate sample documents (or drop your own PDFs into data/)
+python scripts/generate_sample_docs.py
 
 # 5. Build the knowledge base
-python -m app.ingest.loader              # PDF → chunks → embeddings → ChromaDB
+python -m app.ingest.loader   # PDF → chunks → embeddings → ChromaDB
 
 # 6. Run
-uvicorn app.main:app --reload            # REST API  → http://localhost:8000/docs
-# or
-chainlit run app/chainlit_app.py         # Chat UI   → http://localhost:8000
+chainlit run chainlit_app.py  # Chat UI  → http://localhost:8000
+uvicorn app.main:app --reload # REST API → http://localhost:8000/docs
 ```
 
----
-
-## Swapping the LLM (one line)
-
-Edit `LLM_MODEL` in `.env` — nothing else changes:
+### Docker
 
 ```bash
-LLM_MODEL=google_genai:gemini-2.0-flash      # Google AI Studio — free tier
-LLM_MODEL=groq:llama-3.3-70b-versatile       # Groq — free, very fast
-LLM_MODEL=anthropic:claude-3-5-haiku-latest  # Anthropic (paid)
-LLM_MODEL=openai:gpt-4o-mini                 # OpenAI (paid)
+docker build -t agentic-rag .
+docker run -p 7860:7860 -e GROQ_API_KEY=... -e LLM_MODEL=groq:llama-3.3-70b-versatile agentic-rag
 ```
-
-This works because `app/llm/provider.py` wraps `init_chat_model` — a provider-agnostic factory that parses the `"provider:model"` string at runtime.
 
 ---
 
-## Sample interaction
+## Configuration
+
+All settings are read from the environment (see `.env.example`). Switch the entire
+LLM backend by changing one line:
+
+```bash
+LLM_MODEL=google_genai:gemini-2.0-flash      # Google AI Studio (free tier)
+LLM_MODEL=groq:llama-3.3-70b-versatile       # Groq (free, fast)
+LLM_MODEL=anthropic:claude-3-5-haiku-latest  # Anthropic
+LLM_MODEL=openai:gpt-4o-mini                 # OpenAI
+```
+
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_MODEL` | `google_genai:gemini-1.5-flash` | Provider and model, as `provider:model` |
+| `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Local embedding model |
+| `SANDBOX_BACKEND` | `subprocess` | `subprocess` or `docker` |
+| `SANDBOX_TIMEOUT_SECONDS` | `10` | Hard wall-clock limit per execution |
+| `CODE_AGENT_MAX_RETRIES` | `3` | Max self-correction attempts |
+
+---
+
+## Usage
 
 ```
 User:  What was Northwind Robotics' Q4 revenue?
@@ -160,43 +169,60 @@ User:  What was Northwind Robotics' Q4 revenue?
 Agent: Q4 revenue was $138 million [northwind_robotics_2024_annual_report.pdf p.1].
        Full-year revenue was $425 million, up 37% from $310 million in 2023.
 
-Sources:
-  • northwind_robotics_2024_annual_report.pdf — p.1
-    "...Q4 revenue of $138M, reflecting strong holiday-season..."
+       Sources
+       • northwind_robotics_2024_annual_report.pdf — p.1
 
----
 
 User:  Plot quarterly revenue for all three companies as grouped bars.
 
-Agent: [runs self-contained Python in sandbox, produces chart]
-       📊 Chart generated → artifacts/a3f1c2.png
-       [retries: 0]
+Agent: [generates Python → executes in sandbox → returns chart]
+       📊 Chart generated  ·  retries: 0
 ```
 
 ---
 
-## Project layout
+## Evaluation
+
+Measured on a 10-question set (`eval/qa_set.json`) spanning factual retrieval,
+numerical reasoning, and chart generation:
+
+| Metric | Score | Notes |
+|---|---|---|
+| Citation recall | **7 / 7 (100%)** | Correct source in top-*k* for every retrieval question |
+| Router accuracy | **9 / 10 (90%)** | Intent correctly classified |
+| Answer accuracy | **9 / 10 (90%)** | Expected facts present in the answer |
+
+```bash
+python eval/run_eval.py
+```
+
+---
+
+## Project Structure
 
 ```
 RAG/
+├── chainlit_app.py              # Chat UI entry point
 ├── app/
-│   ├── main.py              # FastAPI app
-│   ├── config.py            # All settings via pydantic-settings
-│   ├── vectorstore.py       # Shared ChromaDB handle
+│   ├── main.py                  # FastAPI app
+│   ├── config.py                # Settings (pydantic-settings)
+│   ├── vectorstore.py           # Shared ChromaDB accessor
+│   ├── memory.py                # Per-session conversation memory
 │   ├── graph/
-│   │   ├── state.py         # TypedDict GraphState
-│   │   ├── router.py        # Intent classifier node
-│   │   ├── retrieval.py     # Semantic search + citation node
-│   │   ├── code_agent.py    # Code-gen + sandbox + retry node
-│   │   └── build.py         # LangGraph assembly
-│   ├── llm/provider.py      # Swappable LLM + embeddings
-│   ├── ingest/loader.py     # PDF → chunks → ChromaDB
-│   ├── sandbox/executor.py  # subprocess + Docker backends
-│   └── models/schemas.py    # Pydantic request/response schemas
+│   │   ├── state.py             # Typed graph state
+│   │   ├── router.py            # Intent classifier node
+│   │   ├── retrieval.py         # Semantic search + citation node
+│   │   ├── code_agent.py        # Code-gen + sandbox + retry node
+│   │   └── build.py             # LangGraph assembly
+│   ├── llm/provider.py          # Swappable LLM + embeddings
+│   ├── ingest/loader.py         # PDF → chunks → ChromaDB
+│   ├── sandbox/executor.py      # subprocess + Docker backends
+│   └── models/schemas.py        # Pydantic schemas
 ├── scripts/
-│   └── generate_sample_docs.py   # Generates fictional annual reports
-├── data/                    # PDFs + ChromaDB store (gitignored)
-├── eval/                    # Q&A evaluation set
+│   ├── generate_sample_docs.py  # Reproducible sample corpus
+│   └── make_demo_gif.py         # Demo GIF generator
+├── eval/                        # Evaluation set + harness
+├── data/                        # PDFs + ChromaDB store
 ├── Dockerfile
 ├── .env.example
 └── requirements.txt
@@ -204,44 +230,6 @@ RAG/
 
 ---
 
-## Evaluation results
+## License
 
-Measured on a 10-question eval set (`eval/qa_set.json`) covering factual retrieval,
-numerical reasoning, and chart generation:
-
-| Metric | Score | Details |
-|---|---|---|
-| **Citation recall** | **7 / 7 (100%)** | Correct source doc in top-4 for every retrieval question |
-| **Router accuracy** | **9 / 10 (90%)** | Intent correctly classified on 9 of 10 questions |
-| **Answer accuracy** | **9 / 10 (90%)** | Key facts present in answer; 1 miss on multi-doc arithmetic |
-
-Run it yourself:
-```bash
-python eval/run_eval.py
-```
-
----
-
-## Build roadmap
-
-- [x] **P0** — scaffold, config, swappable LLM interface, typed schemas
-- [x] **P1** — PDF ingestion into ChromaDB, selective retrieval verified
-- [x] **P2/P3** — LangGraph orchestrator: router + retrieval agent + citation grounding
-- [x] **P4** — sandboxed code-exec agent + self-correcting retry loop (4/4 sandbox tests pass)
-- [x] **P5** — multi-turn session memory + Chainlit UI
-- [x] **P6** — Docker + Hugging Face Spaces deployment
-- [x] **P7** — 10-question eval set, metrics verified
-
----
-
-## Resume bullets this implements
-
-> *Architected a **multi-agent RAG pipeline** using **LangGraph** with dynamic intent-based routing **(90% accuracy)**, semantic retrieval via **ChromaDB** with **100% citation recall** on a 10-question eval set, and citation-grounded responses to reduce hallucinations.*
-
-> *Developed a **sandboxed Python execution framework** with automated **self-correcting retry loops** for reliable chart, table, and artifact generation within an agentic document intelligence workflow.*
-
-> *Deployed a containerized **FastAPI** and **Chainlit** application with **Pydantic**-based validation, multi-turn conversational memory, and scalable backend orchestration for production-style GenAI interactions.*
-
----
-
-<p align="center">Built by <a href="https://github.com/alirizzzv">alirizzzv</a></p>
+Released under the MIT License.
