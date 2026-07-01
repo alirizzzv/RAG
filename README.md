@@ -20,6 +20,12 @@ pinned: false
 </p>
 
 <p align="center">
+  <a href="https://alirizzv-agentic-rag.hf.space">
+    <img src="https://img.shields.io/badge/🤗%20Live%20Demo-Hugging%20Face%20Spaces-yellow" />
+  </a>
+</p>
+
+<p align="center">
   <b>Ask questions. Get cited answers. Have Python written, executed, and self-corrected — all grounded in your documents.</b>
 </p>
 
