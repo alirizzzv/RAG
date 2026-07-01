@@ -29,5 +29,11 @@ class Settings(BaseSettings):
     code_agent_max_retries: int = 3
     artifact_dir: str = "./artifacts"
 
+    # Guardrails (protect the public demo's shared LLM quota)
+    max_question_chars: int = 2000
+    rate_limit_per_session: int = 15     # requests per window, per session
+    rate_limit_global: int = 60          # requests per window, all sessions
+    rate_limit_window_seconds: int = 60
+
 
 settings = Settings()

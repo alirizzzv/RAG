@@ -4,14 +4,26 @@ Each browser session gets its own SessionMemory; prior Q&A turns are injected
 into the answer prompt so follow-up questions ("what about the other company?")
 resolve correctly. Charts from the code agent are rendered inline.
 """
+import logging
+import uuid
+
 import chainlit as cl
 
 import app.chainlit_patch  # noqa: F401  — rebinds local_steps to carry a default
+from app.config import settings
 from app.graph.build import get_graph
 from app.memory import SessionMemory
 from app.models.schemas import Intent
+from app.ratelimit import SlidingWindowRateLimiter
+
+logger = logging.getLogger(__name__)
 
 GRAPH = get_graph()
+
+_session_limiter = SlidingWindowRateLimiter(
+    settings.rate_limit_per_session, settings.rate_limit_window_seconds)
+_global_limiter = SlidingWindowRateLimiter(
+    settings.rate_limit_global, settings.rate_limit_window_seconds)
 
 WELCOME = """**Agentic Knowledge Retrieval System**
 
@@ -26,21 +38,51 @@ Ask anything about the loaded knowledge base. I can:
 @cl.on_chat_start
 async def start():
     cl.user_session.set("memory", SessionMemory())
+    cl.user_session.set("rl_key", uuid.uuid4().hex)
     await cl.Message(content=WELCOME).send()
 
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    memory: SessionMemory = cl.user_session.get("memory")
+    memory: SessionMemory = cl.user_session.get("memory") or SessionMemory()
+
+    # --- guardrails ---------------------------------------------------------
+    if len(message.content) > settings.max_question_chars:
+        await cl.Message(content=(
+            f"⚠️ That question is too long "
+            f"(max {settings.max_question_chars} characters). Please shorten it."
+        )).send()
+        return
+
+    rl_key = cl.user_session.get("rl_key") or "anon"
+    if not _global_limiter.allow():
+        await cl.Message(content=(
+            "⚠️ The public demo is busy right now. Please try again in a minute."
+        )).send()
+        return
+    if not _session_limiter.allow(rl_key):
+        await cl.Message(content=(
+            "⚠️ You're sending messages a bit too quickly — give it a few seconds."
+        )).send()
+        return
 
     # Stream a placeholder while the graph runs (graph is synchronous)
     msg = cl.Message(content="")
     await msg.send()
 
-    result = GRAPH.invoke({
-        "question": message.content,
-        "history": memory.as_prompt_block(),
-    })
+    try:
+        result = GRAPH.invoke({
+            "question": message.content,
+            "history": memory.as_prompt_block(),
+        })
+    except Exception:
+        logger.exception("graph invocation failed")
+        msg.content = (
+            "⚠️ Sorry — something went wrong answering that. "
+            "Please try rephrasing, or check that the LLM API key is configured."
+        )
+        await msg.update()
+        return
 
     intent: Intent = result.get("intent", Intent.RETRIEVAL)
     answer: str = result.get("answer", "")

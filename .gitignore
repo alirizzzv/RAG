@@ -10,6 +10,9 @@ env/
 .env
 *.key
 
+# Demo GIF intermediate frames
+docs/_frames/
+
 # Vector store / data artifacts
 data/chroma/
 # keep artifacts/ dir but ignore generated chart files

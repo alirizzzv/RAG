@@ -38,6 +38,7 @@ answers directly from retrieved data.
 - **Provider-agnostic LLM** — switch between Gemini, Groq, Claude, or GPT by changing a single environment variable.
 - **Local embeddings** — `sentence-transformers` runs offline with no API cost.
 - **Multi-turn memory** — per-session conversation history resolves follow-up questions.
+- **Guardrails** — per-session and global rate limiting, input-length caps, and graceful failure so the public demo can't be trivially abused, drained, or crashed.
 
 ---
 
@@ -214,6 +215,10 @@ LLM_MODEL=openai:gpt-4o-mini                 # OpenAI
 | `SANDBOX_BACKEND` | `subprocess` | `subprocess` or `docker` |
 | `SANDBOX_TIMEOUT_SECONDS` | `10` | Hard wall-clock limit per execution |
 | `CODE_AGENT_MAX_RETRIES` | `3` | Max self-correction attempts |
+| `MAX_QUESTION_CHARS` | `2000` | Reject questions longer than this |
+| `RATE_LIMIT_PER_SESSION` | `15` | Requests per window, per session |
+| `RATE_LIMIT_GLOBAL` | `60` | Requests per window, all sessions |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate-limit window length |
 
 ---
 
@@ -278,6 +283,7 @@ RAG/
 │   ├── config.py                # Settings (pydantic-settings)
 │   ├── vectorstore.py           # Shared ChromaDB accessor
 │   ├── memory.py                # Per-session conversation memory
+│   ├── ratelimit.py             # Sliding-window rate limiter
 │   ├── chainlit_patch.py        # Portable Chainlit ContextVar fix
 │   ├── graph/
 │   │   ├── state.py             # Typed graph state
