@@ -1,13 +1,3 @@
----
-title: Agentic Knowledge Retrieval System
-emoji: 🤖
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Agentic Knowledge Retrieval System
 
 <p align="center">
@@ -50,35 +40,26 @@ answers directly from retrieved data.
 
 ## Architecture
 
-```
-User (Chainlit UI)
-       │
-       ▼
- FastAPI /chat
-       │
-       ▼
- LangGraph Orchestrator
-       │
-   [Router node]  ── single LLM call to classify intent
-       │
-  ┌────┴────────────────────────┐
-  ▼                             ▼
-[Retrieval node]           (always runs — grounds both paths)
-  │
-  ├─ intent = retrieval ──► [Answer node] ──► grounded answer + citations
-  │
-  └─ intent = code ────────► [Code-exec node]
-                                  │
-                             LLM generates Python
-                                  │
-                             Sandbox (subprocess / Docker)
-                             timeout · CPU cap · isolated dir
-                                  │
-                             ┌────┴────┐
-                           ok?     error? ── feed traceback back to LLM
-                                  │          and retry (≤ N times)
-                                  ▼
-                             chart / computed result
+```mermaid
+flowchart TD
+    U(["User"]) --> UI["Chainlit UI"]
+    UI --> API["FastAPI · /chat"]
+    API --> RT["Router node"]
+    RT --> RE["Retrieval node"]
+    RE --> VDB[("ChromaDB")]
+    RE -->|"intent = retrieval"| AN["Answer node"]
+    RE -->|"intent = code"| CO["Code-exec node"]
+    AN --> O1(["Grounded answer + citations"])
+    CO --> SB["Sandbox<br/>subprocess / Docker"]
+    SB --> O2(["Chart / computed result"])
+    LLM{{"LLM provider<br/>Gemini · Groq · Claude · GPT"}} -.-> RT
+    LLM -.-> AN
+    LLM -.-> CO
+
+    classDef store fill:#1e293b,stroke:#38bdf8,color:#e2e8f0;
+    classDef llm fill:#312e81,stroke:#818cf8,color:#e2e8f0;
+    class VDB store;
+    class LLM llm;
 ```
 
 **Design principles**
@@ -87,6 +68,78 @@ User (Chainlit UI)
 - **Typed state throughout** — a `TypedDict` graph state flows through every node, so no field is silently dropped.
 - **Single source of truth for the vector store** — ingestion (writes) and retrieval (reads) share one accessor and can never disagree on collection, embeddings, or path.
 - **Pluggable backends** — both the LLM provider and the sandbox executor are swappable behind a stable interface.
+
+### Execution flow
+
+The LangGraph state machine. The code path loops back on failure until it succeeds
+or exhausts its retry budget.
+
+```mermaid
+flowchart TD
+    S(["START"]) --> R["router"]
+    R --> RE["retrieve"]
+    RE -->|"retrieval"| A["answer"]
+    RE -->|"code"| C["code_agent"]
+    A --> E(["END"])
+    C --> X["execute in sandbox"]
+    X --> Q{"success?"}
+    Q -->|"yes"| E
+    Q -->|"no · retries remain"| F["send traceback back to LLM"]
+    F --> C
+    Q -->|"no · max retries hit"| E
+
+    classDef ok fill:#064e3b,stroke:#34d399,color:#d1fae5;
+    classDef bad fill:#4c1d24,stroke:#f87171,color:#fee2e2;
+    class E ok;
+    class F bad;
+```
+
+### Ingestion pipeline
+
+```mermaid
+flowchart LR
+    P["PDF documents"] --> L["PyPDFLoader<br/>page + source metadata"]
+    L --> SP["Recursive splitter<br/>chunk 500 · overlap 100"]
+    SP --> EM["Local embeddings<br/>all-MiniLM-L6-v2"]
+    EM --> DB[("ChromaDB<br/>persistent collection")]
+
+    classDef store fill:#1e293b,stroke:#38bdf8,color:#e2e8f0;
+    class DB store;
+```
+
+### Request lifecycle
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant UI as Chainlit
+    participant G as LangGraph
+    participant V as ChromaDB
+    participant L as LLM
+    participant S as Sandbox
+
+    U->>UI: question
+    UI->>G: invoke(question, history)
+    G->>L: classify intent
+    G->>V: similarity search
+    V-->>G: top-k chunks
+    alt intent = retrieval
+        G->>L: answer from context
+        L-->>G: grounded answer + citations
+    else intent = code
+        G->>L: generate Python
+        L-->>G: code
+        G->>S: execute (timeout · CPU cap)
+        S-->>G: stdout / error / chart
+        opt on error (≤ N times)
+            G->>L: fix using traceback
+            L-->>G: corrected code
+            G->>S: re-execute
+        end
+    end
+    G-->>UI: answer + citations + chart
+    UI-->>U: rendered response
+```
 
 ---
 
@@ -232,4 +285,4 @@ RAG/
 
 ## License
 
-Released under the MIT License.
+Released under the MIT License. See [LICENSE](LICENSE).
