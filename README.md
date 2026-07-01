@@ -1,3 +1,13 @@
+---
+title: Agentic Knowledge Retrieval System
+emoji: 🤖
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Agentic Knowledge Retrieval System
 
 <p align="center">

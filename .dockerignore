@@ -1,0 +1,24 @@
+# Never bake secrets or local state into the image
+.env
+.env.*
+!.env.example
+
+# Python artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Pre-built vector store — rebuilt fresh at docker build time
+data/chroma/
+
+# Local chart artifacts
+artifacts/
+
+# Dev / editor
+.git/
+.chainlit/
+.DS_Store
+.idea/
+.vscode/
