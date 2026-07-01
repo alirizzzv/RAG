@@ -1,0 +1,32 @@
+# ---- Web / UI ----
+fastapi
+uvicorn[standard]
+chainlit
+
+# ---- Agent orchestration ----
+langgraph
+langchain
+langchain-community
+
+# ---- LLM providers (swap via LLM_MODEL env var; only one key needed) ----
+langchain-google-genai        # default: free Gemini tier
+langchain-groq                # alternative free tier
+# langchain-anthropic         # uncomment to use Claude
+# langchain-openai            # uncomment to use GPT
+
+# ---- Retrieval / vector store ----
+chromadb
+langchain-chroma
+langchain-huggingface
+sentence-transformers          # local embeddings (free, offline)
+pypdf                          # PDF ingestion
+
+# ---- Validation / config ----
+pydantic
+pydantic-settings
+python-dotenv
+
+# ---- Sandbox (docker backend optional; subprocess fallback needs no extra dep) ----
+docker
+
+# NOTE: versions left unpinned for initial scaffold; run `pip freeze > requirements.lock.txt` after P1 verifies the install.

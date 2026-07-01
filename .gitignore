@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+*.key
+
+# Vector store / data artifacts
+data/chroma/
+data/*.pdf
+!data/.gitkeep
+artifacts/
+
+# Chainlit
+.chainlit/
+.files/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
