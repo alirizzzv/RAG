@@ -12,9 +12,8 @@ env/
 
 # Vector store / data artifacts
 data/chroma/
-data/*.pdf
-!data/.gitkeep
 artifacts/
+# NOTE: the generated sample reports (data/*.pdf) ARE committed as demo fixtures.
 
 # Chainlit
 .chainlit/

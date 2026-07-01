@@ -29,4 +29,7 @@ python-dotenv
 # ---- Sandbox (docker backend optional; subprocess fallback needs no extra dep) ----
 docker
 
+# ---- Dev / sample-data generation (only needed to regenerate data/*.pdf) ----
+reportlab
+
 # NOTE: versions left unpinned for initial scaffold; run `pip freeze > requirements.lock.txt` after P1 verifies the install.
