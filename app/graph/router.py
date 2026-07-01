@@ -12,15 +12,19 @@ from app.models.schemas import Intent
 _ROUTER_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "You route a user question to one of two handlers. Reply with EXACTLY one "
-     "word, no punctuation:\n"
-     "  code       - the user wants a number computed, data aggregated, or a "
-     "chart/plot/table generated from figures in the documents.\n"
-     "  retrieval  - a factual or explanatory question answered by quoting the "
-     "documents.\n"
+     "word — either 'retrieval' or 'code' — no punctuation, no explanation.\n\n"
+     "  retrieval  - the answer is a fact, explanation, or quote that exists "
+     "in the documents (strategy, risks, descriptions, comparisons).\n"
+     "  code       - the user explicitly wants a chart, plot, graph, calculation, "
+     "or aggregation computed from numbers in the documents.\n\n"
+     "When in doubt choose 'retrieval'.\n\n"
      "Examples:\n"
-     "  'What was the company strategy in 2024?' -> retrieval\n"
-     "  'Plot the quarterly revenue' -> code\n"
-     "  'What is total segment revenue?' -> code"),
+     "  'What was the company strategy in 2024?'          -> retrieval\n"
+     "  'Which segment grew fastest?'                     -> retrieval\n"
+     "  'What were the key risks?'                        -> retrieval\n"
+     "  'Plot quarterly revenue as a bar chart'           -> code\n"
+     "  'Show a pie chart of segment breakdown'           -> code\n"
+     "  'Calculate total annual revenue across companies' -> code"),
     ("human", "{question}"),
 ])
 
