@@ -20,8 +20,8 @@ class Settings(BaseSettings):
 
     # Retrieval
     top_k: int = 4
-    chunk_size: int = 1000
-    chunk_overlap: int = 150
+    chunk_size: int = 500
+    chunk_overlap: int = 100
 
     # Sandbox
     sandbox_backend: str = "subprocess"  # "docker" | "subprocess"

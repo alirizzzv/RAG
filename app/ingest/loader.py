@@ -41,7 +41,12 @@ def ingest(data_dir: str = "./data") -> int:
         if "page" in c.metadata:
             c.metadata["page"] = int(c.metadata["page"]) + 1
 
-    get_vectorstore().add_documents(chunks)
+    vs = get_vectorstore()
+    # Idempotent: clear any prior contents so re-running never duplicates.
+    existing = vs.get()
+    if existing and existing.get("ids"):
+        vs.delete(ids=existing["ids"])
+    vs.add_documents(chunks)
     return len(chunks)
 
 
