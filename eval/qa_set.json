@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "question": "What was Northwind Robotics total revenue in fiscal 2024?",
+    "expected_answer_contains": ["425", "million"],
+    "expected_source": "northwind_robotics_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 2,
+    "question": "Which segment grew fastest at Helios Energy in 2024?",
+    "expected_answer_contains": ["storage"],
+    "expected_source": "helios_energy_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 3,
+    "question": "What caused Meridian Foods operating margin to decline?",
+    "expected_answer_contains": ["pea protein", "inflation", "input-cost"],
+    "expected_source": "meridian_foods_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 4,
+    "question": "What was Helios Energy Q3 revenue?",
+    "expected_answer_contains": ["205"],
+    "expected_source": "helios_energy_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 5,
+    "question": "What were Northwind Robotics gross margin figures and how did they change?",
+    "expected_answer_contains": ["48"],
+    "expected_source": "northwind_robotics_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 6,
+    "question": "How much is Meridian Foods investing in its second manufacturing facility?",
+    "expected_answer_contains": ["60"],
+    "expected_source": "meridian_foods_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 7,
+    "question": "Plot a bar chart of quarterly revenue for Northwind Robotics",
+    "expected_answer_contains": [],
+    "expected_source": null,
+    "intent": "code",
+    "expect_artifact": true
+  },
+  {
+    "id": 8,
+    "question": "Calculate the total annual revenue across all three companies and print it",
+    "expected_answer_contains": ["1378", "1,378", "1378.0"],
+    "expected_source": null,
+    "intent": "code"
+  },
+  {
+    "id": 9,
+    "question": "What are the key risks facing Northwind Robotics?",
+    "expected_answer_contains": ["actuator", "supplier", "competition"],
+    "expected_source": "northwind_robotics_2024_annual_report.pdf",
+    "intent": "retrieval"
+  },
+  {
+    "id": 10,
+    "question": "Show a pie chart of Helios Energy revenue by segment",
+    "expected_answer_contains": [],
+    "expected_source": null,
+    "intent": "code",
+    "expect_artifact": true
+  }
+]

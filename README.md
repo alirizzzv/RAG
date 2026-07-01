@@ -26,6 +26,10 @@ pinned: false
 </p>
 
 <p align="center">
+  <img src="docs/demo.gif" width="780" alt="Demo: retrieval with citations, multi-turn memory, code agent with chart" />
+</p>
+
+<p align="center">
   <b>Ask questions. Get cited answers. Have Python written, executed, and self-corrected — all grounded in your documents.</b>
 </p>
 
@@ -200,25 +204,43 @@ RAG/
 
 ---
 
+## Evaluation results
+
+Measured on a 10-question eval set (`eval/qa_set.json`) covering factual retrieval,
+numerical reasoning, and chart generation:
+
+| Metric | Score | Details |
+|---|---|---|
+| **Citation recall** | **7 / 7 (100%)** | Correct source doc in top-4 for every retrieval question |
+| **Router accuracy** | **9 / 10 (90%)** | Intent correctly classified on 9 of 10 questions |
+| **Answer accuracy** | **9 / 10 (90%)** | Key facts present in answer; 1 miss on multi-doc arithmetic |
+
+Run it yourself:
+```bash
+python eval/run_eval.py
+```
+
+---
+
 ## Build roadmap
 
 - [x] **P0** — scaffold, config, swappable LLM interface, typed schemas
 - [x] **P1** — PDF ingestion into ChromaDB, selective retrieval verified
 - [x] **P2/P3** — LangGraph orchestrator: router + retrieval agent + citation grounding
 - [x] **P4** — sandboxed code-exec agent + self-correcting retry loop (4/4 sandbox tests pass)
-- [ ] **P5** — multi-turn session memory + Chainlit UI
-- [ ] **P6** — Dockerize + deploy to Hugging Face Spaces
-- [ ] **P7** — eval set, demo GIF, README polish
+- [x] **P5** — multi-turn session memory + Chainlit UI
+- [x] **P6** — Docker + Hugging Face Spaces deployment
+- [x] **P7** — 10-question eval set, metrics verified
 
 ---
 
 ## Resume bullets this implements
 
-> *Architected a **multi-agent RAG pipeline** using **LangGraph** with dynamic intent-based routing, semantic retrieval via **ChromaDB**, and citation-grounded responses.*
+> *Architected a **multi-agent RAG pipeline** using **LangGraph** with dynamic intent-based routing **(90% accuracy)**, semantic retrieval via **ChromaDB** with **100% citation recall** on a 10-question eval set, and citation-grounded responses to reduce hallucinations.*
 
-> *Developed a **sandboxed Python execution framework** with automated **self-correcting retry loops** for reliable chart, table, and artifact generation.*
+> *Developed a **sandboxed Python execution framework** with automated **self-correcting retry loops** for reliable chart, table, and artifact generation within an agentic document intelligence workflow.*
 
-> *Deployed a containerized **FastAPI** and **Chainlit** application with **Pydantic**-based validation, multi-turn conversational memory, and scalable backend orchestration.*
+> *Deployed a containerized **FastAPI** and **Chainlit** application with **Pydantic**-based validation, multi-turn conversational memory, and scalable backend orchestration for production-style GenAI interactions.*
 
 ---
 
