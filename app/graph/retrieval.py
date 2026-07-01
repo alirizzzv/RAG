@@ -17,7 +17,8 @@ _ANSWER_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "Answer the question using ONLY the provided context. Cite the source of "
      "each claim inline as [source p.PAGE]. If the context does not contain the "
-     "answer, say you don't have enough information — do not invent facts."),
+     "answer, say you don't have enough information — do not invent facts.\n\n"
+     "{history}"),
     ("human", "Context:\n{context}\n\nQuestion: {question}"),
 ])
 
@@ -53,5 +54,6 @@ def answer_with_citations(state: GraphState) -> GraphState:
     answer = (_ANSWER_PROMPT | get_llm()).invoke({
         "context": format_context(docs),
         "question": state["question"],
+        "history": state.get("history") or "",
     }).content
     return {"answer": answer, "citations": docs_to_citations(docs)}

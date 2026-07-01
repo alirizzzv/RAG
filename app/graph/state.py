@@ -13,6 +13,7 @@ from app.models.schemas import Citation, Intent
 class GraphState(TypedDict, total=False):
     # input
     question: str
+    history: Optional[str]   # formatted prior-turn context from SessionMemory
 
     # router output
     intent: Intent
