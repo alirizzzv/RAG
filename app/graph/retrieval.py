@@ -27,7 +27,8 @@ def retrieve(state: GraphState) -> GraphState:
     return {"context": docs}
 
 
-def _format_context(docs: list[Document]) -> str:
+def format_context(docs: list[Document]) -> str:
+    """Render retrieved docs into a prompt block tagged with source + page."""
     return "\n\n".join(
         f"[{d.metadata.get('source', '?')} p.{d.metadata.get('page', '?')}] "
         f"{d.page_content}"
@@ -35,13 +36,9 @@ def _format_context(docs: list[Document]) -> str:
     )
 
 
-def answer_with_citations(state: GraphState) -> GraphState:
-    docs = state.get("context", [])
-    answer = (_ANSWER_PROMPT | get_llm()).invoke({
-        "context": _format_context(docs),
-        "question": state["question"],
-    }).content
-    citations = [
+def docs_to_citations(docs: list[Document]) -> list[Citation]:
+    """Turn retrieved docs into structured citations for the UI."""
+    return [
         Citation(
             source=d.metadata.get("source", "?"),
             page=d.metadata.get("page"),
@@ -49,4 +46,12 @@ def answer_with_citations(state: GraphState) -> GraphState:
         )
         for d in docs
     ]
-    return {"answer": answer, "citations": citations}
+
+
+def answer_with_citations(state: GraphState) -> GraphState:
+    docs = state.get("context", [])
+    answer = (_ANSWER_PROMPT | get_llm()).invoke({
+        "context": format_context(docs),
+        "question": state["question"],
+    }).content
+    return {"answer": answer, "citations": docs_to_citations(docs)}

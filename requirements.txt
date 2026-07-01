@@ -29,6 +29,10 @@ python-dotenv
 # ---- Sandbox (docker backend optional; subprocess fallback needs no extra dep) ----
 docker
 
+# ---- Code-exec agent runtime (charts / tables / data wrangling) ----
+pandas
+matplotlib
+
 # ---- Dev / sample-data generation (only needed to regenerate data/*.pdf) ----
 reportlab
 
