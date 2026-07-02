@@ -30,6 +30,11 @@ from app.config import settings
 
 ARTIFACT_NAME = "output.png"
 
+# Shared, persistent matplotlib cache dir so the font list is built once and
+# reused across sandbox runs (a fresh HOME each time would rebuild it).
+_MPL_CACHE = Path(tempfile.gettempdir()) / "rag_sandbox_mplcache"
+_warmed = False
+
 
 @dataclass
 class ExecResult:
@@ -37,6 +42,28 @@ class ExecResult:
     stdout: str
     stderr: str
     artifact_path: Optional[str] = None
+
+
+def warm_up() -> None:
+    """Pre-build matplotlib's font cache before any timed run needs it.
+
+    The first matplotlib import builds a font list (several seconds). If that
+    happens inside a timed sandbox run it can blow the wall-clock limit — and
+    because it's killed mid-build the cache is never written, so every retry
+    times out too. Building it once here, untimed, makes the first chart fast.
+    Idempotent and best-effort: charts still work if this fails, just slower.
+    """
+    global _warmed
+    if _warmed:
+        return
+    _warmed = True
+    _MPL_CACHE.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, "MPLBACKEND": "Agg", "MPLCONFIGDIR": str(_MPL_CACHE)}
+    try:
+        subprocess.run([sys.executable, "-c", "import matplotlib.pyplot"],
+                       env=env, capture_output=True, timeout=120)
+    except Exception:
+        pass
 
 
 def run(code: str) -> ExecResult:
@@ -72,10 +99,8 @@ def _cpu_limit(seconds: int):
 
 def _run_subprocess(code: str) -> ExecResult:
     timeout = settings.sandbox_timeout_seconds
-    # Persistent matplotlib cache so the font list is built once, not per run
-    # (a fresh HOME each time would otherwise rebuild it and blow the timeout).
-    mpl_cache = Path(tempfile.gettempdir()) / "rag_sandbox_mplcache"
-    mpl_cache.mkdir(parents=True, exist_ok=True)
+    warm_up()  # ensure the matplotlib font cache exists before the timed run
+    _MPL_CACHE.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         workdir = Path(tmp)
         (workdir / "snippet.py").write_text(code)
@@ -84,7 +109,7 @@ def _run_subprocess(code: str) -> ExecResult:
             "PATH": os.environ.get("PATH", ""),
             "HOME": str(workdir),
             "MPLBACKEND": "Agg",
-            "MPLCONFIGDIR": str(mpl_cache),
+            "MPLCONFIGDIR": str(_MPL_CACHE),
         }
         try:
             proc = subprocess.run(
