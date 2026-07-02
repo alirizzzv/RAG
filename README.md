@@ -37,7 +37,7 @@ answers directly from retrieved data.
 - **Self-correcting retries** — when generated code fails, the traceback is fed back to the model and the code is regenerated, up to a configurable retry limit.
 - **Provider-agnostic LLM** — switch between Gemini, Groq, Claude, or GPT by changing a single environment variable.
 - **Local embeddings** — `sentence-transformers` runs offline with no API cost.
-- **Multi-turn memory** — per-session conversation history resolves follow-up questions.
+- **History-aware retrieval** — before searching, a follow-up like *"what about the other company?"* is rewritten into a standalone query using the conversation, so retrieval isn't blind to context. Per-session memory backs both the chat UI and the REST API.
 - **Guardrails** — per-session and global rate limiting, input-length caps, and graceful failure so the public demo can't be trivially abused, drained, or crashed.
 
 ---

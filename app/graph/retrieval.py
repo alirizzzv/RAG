@@ -5,6 +5,7 @@ get grounded context. `answer_with_citations` produces the final grounded text
 plus structured Citation objects the UI can render.
 """
 import re
+from typing import Optional
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -26,10 +27,39 @@ _ANSWER_PROMPT = ChatPromptTemplate.from_messages([
     ("human", "Context:\n{context}\n\nQuestion: {question}"),
 ])
 
+# Rewrites a follow-up into a self-contained query so retrieval — which embeds
+# the query text — isn't blind to the conversation. Without this, "what about
+# the other company?" is embedded literally and retrieves nothing useful.
+_REWRITE_PROMPT = ChatPromptTemplate.from_messages([
+    ("system",
+     "Given the prior conversation and a follow-up question, rewrite the "
+     "follow-up as a STANDALONE question that makes sense with no history. "
+     "Resolve pronouns and references (e.g. 'the other company', 'it', 'that') "
+     "into the explicit names they refer to, using the conversation. If the "
+     "question is already standalone, return it unchanged. Return ONLY the "
+     "rewritten question — no preamble, no quotes."),
+    ("human", "{history}\n\nFollow-up question: {question}"),
+])
+
+
+def standalone_query(question: str, history: Optional[str]) -> str:
+    """Resolve a follow-up into a self-contained query using prior turns.
+
+    First turn (no history) has nothing to resolve, so we skip the LLM call and
+    return the question unchanged.
+    """
+    if not history:
+        return question
+    rewritten = (_REWRITE_PROMPT | get_llm()).invoke(
+        {"history": history, "question": question}
+    ).content.strip()
+    return rewritten or question
+
 
 def retrieve(state: GraphState) -> GraphState:
-    docs = get_vectorstore().similarity_search(state["question"], k=settings.top_k)
-    return {"context": docs}
+    query = standalone_query(state["question"], state.get("history"))
+    docs = get_vectorstore().similarity_search(query, k=settings.top_k)
+    return {"context": docs, "search_query": query}
 
 
 def format_context(docs: list[Document]) -> str:

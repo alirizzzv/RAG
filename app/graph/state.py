@@ -19,6 +19,7 @@ class GraphState(TypedDict, total=False):
     intent: Intent
 
     # retrieval output
+    search_query: str        # question after history-aware rewrite (may == question)
     context: list[Document]
     citations: list[Citation]
 
