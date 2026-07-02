@@ -1,8 +1,8 @@
 # Agentic Knowledge Retrieval System
 
 <p align="center">
-  <a href="https://github.com/alirizzzv/RAG/actions/workflows/ci.yml">
-    <img src="https://github.com/alirizzzv/RAG/actions/workflows/ci.yml/badge.svg" />
+  <a href="https://github.com/alirizzzv/AgenticRetrieval/actions/workflows/ci.yml">
+    <img src="https://github.com/alirizzzv/AgenticRetrieval/actions/workflows/ci.yml/badge.svg" />
   </a>
   <img src="https://img.shields.io/badge/Python-3.9-blue?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/LangGraph-0.6-orange?logo=chainlink&logoColor=white" />
@@ -167,7 +167,7 @@ sequenceDiagram
 
 ```bash
 # 1. Clone
-git clone https://github.com/alirizzzv/RAG.git && cd RAG
+git clone https://github.com/alirizzzv/AgenticRetrieval.git && cd AgenticRetrieval
 
 # 2. Install
 python -m venv .venv && source .venv/bin/activate
@@ -262,9 +262,11 @@ python eval/run_eval.py
 ## Testing
 
 A `pytest` suite covers the sandbox executor, the self-correcting retry loop
-(fake LLM returns broken code, then correct code — asserting recovery), session
-memory, schema validation, and a regression test for the Chainlit context fix.
-CI runs it on every push (see the badge above).
+(fake LLM returns broken code, then correct code — asserting recovery),
+citation grounding (only cited sources are surfaced), history-aware retrieval
+(follow-ups are rewritten before searching), session memory, schema validation,
+and a regression test for the Chainlit context fix. CI runs it on every push
+(see the badge above).
 
 ```bash
 pip install -r requirements-dev.txt
@@ -276,7 +278,7 @@ pytest -q
 ## Project Structure
 
 ```
-RAG/
+AgenticRetrieval/
 ├── chainlit_app.py              # Chat UI entry point
 ├── app/
 │   ├── main.py                  # FastAPI app
