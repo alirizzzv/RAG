@@ -244,18 +244,41 @@ Agent: [generates Python → executes in sandbox → returns chart]
 
 ## Evaluation
 
-Measured on a 10-question set (`eval/qa_set.json`) spanning factual retrieval,
-numerical reasoning, and chart generation:
+A labelled 30-question set (`eval/qa_set.json`) spans factual retrieval,
+numerical reasoning, chart generation, and — deliberately — **out-of-scope
+questions whose answers are in no document**, to measure whether the system
+declines rather than fabricates. The harness reports five metrics, named the
+way the RAG literature (e.g. RAGAS) uses them so the numbers mean what they say:
 
-| Metric | Score | Notes |
+| Metric | Score | What it measures |
 |---|---|---|
-| Citation recall | **7 / 7 (100%)** | Correct source in top-*k* for every retrieval question |
-| Router accuracy | **9 / 10 (90%)** | Intent correctly classified |
-| Answer accuracy | **9 / 10 (90%)** | Expected facts present in the answer |
+| Retrieval hit-rate | **23 / 23 (100%)** | Correct source doc appears in the top-*k* chunks (recall@k — not precision) |
+| Faithfulness | **22 / 23 (95%)** | LLM-as-judge: every claim in the answer is supported by the retrieved context (anti-hallucination) |
+| Abstention rate | **3 / 3 (100%)** | For out-of-scope questions, the system correctly declines instead of inventing an answer |
+| Answer match | **25 / 27 (92%)** | Expected key facts present in the answer (keyword check); for charts, an artifact was produced |
+| Router accuracy | **27 / 30 (90%)** | Intent classified to the right handler |
 
 ```bash
 python eval/run_eval.py
 ```
+
+Measured on a representative run with `groq:llama-3.3-70b-versatile` (the deployed
+config); scores vary slightly run-to-run with LLM non-determinism.
+
+**Honest limitations**
+
+- **Small, hand-labelled set.** 30 questions over 3 documents — enough to catch
+  regressions and surface failure modes, not a statistical benchmark.
+- **Faithfulness is self-judged.** The grader is the same provider as the app, so
+  treat it as a self-consistency proxy, not an independent audit.
+- **Answer match is a keyword check**, so it confirms a fact is *present*, not that
+  the full answer is semantically correct.
+- **Known failure modes the eval exposes:** the router occasionally sends
+  quantitative *retrieval* questions ("by what percentage did revenue grow?") to
+  the code path; and cross-document arithmetic ("total across all three
+  companies") can be wrong, because the code agent sees only the top-*k*
+  retrieved chunks rather than every document — the natural next step is a
+  retrieval pass scoped to aggregation queries.
 
 ---
 
