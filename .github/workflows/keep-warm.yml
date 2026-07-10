@@ -1,0 +1,32 @@
+name: Keep Space Warm
+
+# Free Hugging Face cpu-basic Spaces power down after 48h of inactivity, and
+# re-scheduling from a cold state can intermittently fail ("unable to schedule").
+# This job pings the live demo on a schedule so the Space never goes idle long
+# enough to be garbage-collected, keeping the resume link reliably up.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours (well within the 48h GC window)
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the live demo
+        run: |
+          URL="https://alirizzv-agentic-rag.hf.space/"
+          echo "Pinging $URL"
+          # Retry a few times: a fully-asleep Space needs a moment to wake.
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$URL" || echo "000")
+            echo "Attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Space is awake."
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "Space did not return 200 after retries (HTTP $code)."
+          echo "It may be cold-starting or the free tier is congested; the next scheduled run will retry."
